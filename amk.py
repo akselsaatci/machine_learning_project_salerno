@@ -13,13 +13,13 @@ DT = 1.0/50
 INITIAL_CAMERA_ANGLE = 90.0
 INITIAL_CAMERA_DISTANCE = 3.0
 NO_DEADLINE = 100.0*365.0*86400.0
-JOINTS = 12
+JOINTS = 11
 TEXT_HEIGHT = 2.5
 TEXT_POS = 0.5*TABLE_LENGTH+0.5
 STOPPED_SPEED_THRESHOLD = 0.01
 STOPPED_TIME_THRESHOLD = 1.0
 DIST_THRESHOLD = 3*TABLE_LENGTH
-STATE_DIMENSION = 12
+STATE_DIMENSION = 37
 BALL_SERVICE_HEIGHT = TABLE_HEIGHT+1.0
 FONT_SIZE = 2.0
 
@@ -38,8 +38,7 @@ class RobotTableEnv(gym.Env):
         # Random position within the pallets range
         self.box_pos = [np.random.uniform(0),
                         np.random.uniform(-0.5-0.5*TABLE_LENGTH), np.random.uniform(2.0, 2.5)]
-        self.box = p.createCollisionShape(
-            p.GEOM_BOX, halfExtents=[0.1, 0.1, 0.1])
+        #    p.GEOM_BOX, halfExtents=[0.1, 0.1, 0.1])
         self.box_visual = p.createVisualShape(
             p.GEOM_BOX, halfExtents=[0.1, 0.1, 0.1], rgbaColor=[1, 0, 0, 1])
         # Action and observation spaces
@@ -87,6 +86,19 @@ class RobotTableEnv(gym.Env):
             cameraYaw=self.camera_angle,
             cameraPitch=-30.0,
             cameraTargetPosition=[0.0, 0.0, 1.0])
+
+    def get_paddle_position_and_normal(self):
+        rob = self.robot
+        pos = [0.0] * 3
+        nor = [0.0] * 3
+        ls = p.getLinkState(rob, 11)
+        pos[0:3] = ls[0][0:3]
+        quat = ls[1]
+        mat = p.getMatrixFromQuaternion(quat)
+        nor[0] = mat[2]
+        nor[1] = mat[5]
+        nor[2] = mat[8]
+        return pos, nor
 
     def step(self, action):
         # Apply action to robot joints
@@ -167,13 +179,17 @@ class RobotTableEnv(gym.Env):
 
     def _calculate_reward(self):
         # Calculate reward based on distance between robot and target
-        robot_pos, _ = p.getBasePositionAndOrientation(self.robot)
+        robot_pos, _ = self.get_paddle_position_and_normal()
         # Set the target position here (e.g., center of the table)
-        target_pos = [0, 0, 0]
+        target_pos = self.box_pos
+        print(f"np.array(robot_pos): {np.array(robot_pos)}")
+        print(f"np.array(target_pos): {np.array(target_pos)}")
         distance_to_target = np.linalg.norm(
             np.array(robot_pos) - np.array(target_pos))
 
         # Define a reward function that encourages the robot to move closer to the target
         reward = -distance_to_target
+
+        print(f"Reward: {reward}")
 
         return reward
