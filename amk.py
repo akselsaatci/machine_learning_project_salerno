@@ -88,6 +88,19 @@ class RobotTableEnv(gym.Env):
             cameraPitch=-30.0,
             cameraTargetPosition=[0.0, 0.0, 1.0])
 
+    def get_paddle_position_and_normal(self):
+        rob = self.robot
+        pos = [0.0] * 3
+        nor = [0.0] * 3
+        ls = p.getLinkState(rob, 11)
+        pos[0:3] = ls[0][0:3]
+        quat = ls[1]
+        mat = p.getMatrixFromQuaternion(quat)
+        nor[0] = mat[2]
+        nor[1] = mat[5]
+        nor[2] = mat[8]
+        return pos, nor
+
     def step(self, action):
         # Apply action to robot joints
         self.update_gui()
@@ -167,13 +180,17 @@ class RobotTableEnv(gym.Env):
 
     def _calculate_reward(self):
         # Calculate reward based on distance between robot and target
-        robot_pos, _ = p.getBasePositionAndOrientation(self.robot)
+        robot_pos, _ = self.get_paddle_position_and_normal()
+        print(f"robot_pos: {robot_pos}")
         # Set the target position here (e.g., center of the table)
-        target_pos = [0, 0, 0]
+        target_pos = self.box_pos
+        print(f"target_pos: {target_pos}")
         distance_to_target = np.linalg.norm(
             np.array(robot_pos) - np.array(target_pos))
 
         # Define a reward function that encourages the robot to move closer to the target
-        reward = -distance_to_target
+        reward = -(distance_to_target * distance_to_target)
+
+        print(f"reward: {reward}")
 
         return reward

@@ -124,7 +124,7 @@ env = RobotTableEnv()
 state_dim = env.observation_space.shape[0]
 
 action_dim = JOINTS
-max_action = 1  # Assuming action space is bounded between -1 and 1
+max_action = 10  # Assuming action space is bounded between -1 and 1
 num_episodes = 100
 batch_size = 512
 
