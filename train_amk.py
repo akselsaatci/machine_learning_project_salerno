@@ -49,17 +49,15 @@ class ReplayBuffer:
         e = self.experience(state, action, reward, next_state, done)
         self.buffer.append(e)
 
-    def sample(self, batch_size):#Takes samples of old training data ! needs to be optimized
+    def sample(self, batch_size):
         batch = random.sample(self.buffer, batch_size)
+        batch = self.experience(*zip(*batch))
 
-        states, actions, rewards, next_states, dones = zip(*[(e.state, e.action, e.reward, e.next_state, e.done) for e in batch])
-
-
-        states = torch.FloatTensor(np.array(states))
-        actions = torch.FloatTensor(np.array(actions))
-        rewards = torch.FloatTensor(np.array(rewards))
-        next_states = torch.FloatTensor(np.array(next_states))
-        dones = torch.FloatTensor(np.array(dones))
+        states = torch.FloatTensor(np.array(batch.state))
+        actions = torch.FloatTensor(np.array(batch.action))
+        rewards = torch.FloatTensor(np.array(batch.reward))
+        next_states = torch.FloatTensor(np.array(batch.next_state))
+        dones = torch.FloatTensor(np.array(batch.done))
 
         return states, actions, rewards, next_states, dones
 
@@ -101,14 +99,27 @@ class DDPGAgent:
     def train(self, replay_buffer, batch_size):
         states, actions, rewards, next_states, dones = replay_buffer.sample(batch_size)
 
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        states = states.to(device)
+        actions = actions.to(device)
+        rewards = rewards.to(device)
+        next_states = next_states.to(device)
+        dones = dones.to(device)
+
         # Normalize rewards
         rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-5)
 
         # Update critic
-        next_actions = self.actor_target(next_states)
-        q_targets_next = self.critic_target(next_states, next_actions)
+        next_controllable_actions = self.actor_target(next_states)
+
+        next_actions = actions.clone()
+        for idx, action_value in zip(self.movable_indices, next_controllable_actions.T):
+            next_actions[:, idx] = action_value
+
+        q_targets_next = self.critic_target(next_states, next_actions).squeeze(-1)
         q_targets = rewards + (self.gamma * q_targets_next * (1 - dones))
-        q_expected = self.critic(states, actions)
+        q_expected = self.critic(states, actions).squeeze(-1)
         critic_loss = nn.MSELoss()(q_expected, q_targets.detach())
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
@@ -117,10 +128,10 @@ class DDPGAgent:
 
         # Update actor
         predicted_actions = self.actor(states)
-        full_actions = torch.zeros((batch_size, self.total_action_dim))
-        for i in range(batch_size):
-            for idx, action_value in zip(self.movable_indices, predicted_actions[i]):
-                full_actions[i][idx] = action_value
+
+        full_actions = actions.clone()
+        for idx, action_value in zip(self.movable_indices, predicted_actions.T):
+            full_actions[:, idx] = action_value
 
         actor_loss = -self.critic(states, full_actions).mean()
         self.actor_optimizer.zero_grad()
