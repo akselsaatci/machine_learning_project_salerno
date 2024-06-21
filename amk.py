@@ -1,3 +1,6 @@
+import math
+
+import csv
 import gym
 from gym import spaces
 import pybullet as p
@@ -23,6 +26,10 @@ STATE_DIMENSION = 12
 BALL_SERVICE_HEIGHT = TABLE_HEIGHT+1.0
 FONT_SIZE = 2.0
 
+csvfile = open('data.csv', 'w', newline='')
+spamwriter = csv.writer(csvfile, delimiter=' ',
+                                quotechar='|', quoting=csv.QUOTE_MINIMAL)
+spamwriter.writerow(['robot_pos', 'target_pos'])
 
 class RobotTableEnv(gym.Env):
     def __init__(self):
@@ -181,10 +188,10 @@ class RobotTableEnv(gym.Env):
     def _calculate_reward(self):
         # Calculate reward based on distance between robot and target
         robot_pos, _ = self.get_paddle_position_and_normal()
-        print(f"robot_pos: {robot_pos}")
+
         # Set the target position here (e.g., center of the table)
         target_pos = self.box_pos
-        print(f"target_pos: {target_pos}")
+        spamwriter.writerow([robot_pos, target_pos])
         distance_to_target = np.linalg.norm(
             np.array(robot_pos) - np.array(target_pos))
 
