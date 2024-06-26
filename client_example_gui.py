@@ -1,33 +1,28 @@
-import numpy as np
 from client import Client, JOINTS, DEFAULT_PORT
 import sys
 import math
 import threading
 import tkinter as tk
 from tkinter import ttk
-import tkthread
-
+import numpy as np
 
 # Create the main window
 root = tk.Tk()
 root.title("Joint Control")
 
 # Function to update label when slider is moved
-
-
-def update_label(slider, label):
-    value = slider.get()
+def update_label(slider_var, label):
+    value = slider_var.get()
     label.config(text=f"{value:.2f}")
-
 
 # Joint specifications
 joints = [
     {"type": "Translation",
-        "range": (-0.3, 0.3), "description": "Forward-Backward Slider. Positive Values are forward."},
+     "range": (-0.3, 0.3), "description": "Forward-Backward Slider. Positive Values are forward."},
     {"type": "Translation",
-        "range": (-0.8, 0.8), "description": "Left-Right Slider. Positive Values are to the right."},
+     "range": (-0.8, 0.8), "description": "Left-Right Slider. Positive Values are to the right."},
     {"type": "Rotation",
-        "range": (-360, 360), "description": "Rotation around the vertical axis (Z)."},
+     "range": (-360, 360), "description": "Rotation around the vertical axis (Z)."},
     {"type": "Rotation", "range": (-math.pi/2, math.pi/2),
      "description": "Pitch of the first arm link."},
     {"type": "Rotation", "range": (-360, 360),
@@ -48,6 +43,8 @@ joints = [
 
 # Create and place sliders and labels
 sliders = []
+slider_vars = []
+
 for i, joint in enumerate(joints):
     frame = ttk.Frame(root, padding="10")
     frame.grid(row=i, column=0, sticky=(tk.W, tk.E))
@@ -55,41 +52,53 @@ for i, joint in enumerate(joints):
     label = ttk.Label(frame, text=f"Joint {i} ({joint['type']}):")
     label.grid(row=0, column=0, sticky=tk.W)
 
+    slider_var = tk.DoubleVar()
     slider = tk.Scale(
-        frame, from_=joint["range"][0], to=joint["range"][1], orient=tk.HORIZONTAL)
+        frame, from_=joint["range"][0], to=joint["range"][1], orient=tk.HORIZONTAL,
+        resolution=0.01, variable=slider_var)
     slider.grid(row=0, column=1, sticky=(tk.W, tk.E))
 
     value_label = ttk.Label(frame, text="0.00")
     value_label.grid(row=0, column=2, sticky=tk.W)
 
-    slider.config(command=lambda val, s=slider,
-                  l=value_label: update_label(s, l))
+    slider_var.trace_add('write', lambda name, index, mode, sv=slider_var, vl=value_label: update_label(sv, vl))
 
     description = ttk.Label(frame, text=joint["description"], wraplength=300)
     description.grid(row=1, column=0, columnspan=3, sticky=tk.W)
 
     sliders.append(slider)
-
+    slider_vars.append(slider_var)
 
 def run(cli):
     j = np.zeros((JOINTS,))
     j[2] = math.pi
-    j[10] = math.pi / 2
+    j[10] = math.pi
     j[5] = math.pi / 2
     j[9] = math.pi / 4
     while True:
         state = cli.get_state()
-        print(state)
-        for i, slider in enumerate(sliders):
-            j[i] = slider.get()
+        #print(state)
+        #diffferent prints:
+
+        #pos of robot base:
+        #print(f"Base (x,y):{state[0]},{state[1]}")
+
+        print(f"Joint 10: {state[10]}")
+
 
         # Agent
         bx = state[17]
-        j[1] = bx
+
+        #take slider info
+        for i, slider_var in enumerate(slider_vars):
+            j[i] = slider_var.get()
+            if i==1 and j[i]==0:
+                j[1] = bx
+        #trying to get the paddle to be in the right position
+        #if state[10]%(math.pi/2)==0: j[10]=0
 
         # Send updated joint values to the server
         cli.send_joints(j)
-
 
 def main():
     name = 'Example Client'
@@ -109,26 +118,6 @@ def main():
     threading.Thread(target=run, args=(cli,)).start()
     # Start the GUI main loop in a separate thread
     root.mainloop()
-    # Create the client and run the communication loop
-
 
 if __name__ == '__main__':
-    '''
-    python client_example.py name port host
-    Default parameters:
-     name: 'Example Client'
-     port: client.DEFAULT_PORT
-     host: 'localhost'
-
-    To run the one simulation on the server, run this in 3 separate command shells:
-    > python client_example.py player_A
-    > python client_example.py player_B
-    > python server.py
-
-    To run a second simulation, select a different PORT on the server:
-    > python client_example.py player_A 9544
-    > python client_example.py player_B 9544
-    > python server.py -port 9544
-    '''
-
     main()
