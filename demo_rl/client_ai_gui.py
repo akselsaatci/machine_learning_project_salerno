@@ -5,7 +5,6 @@ import math
 import threading
 import tkinter as tk
 from tkinter import ttk
-import tkthread
 
 
 # Create the main window

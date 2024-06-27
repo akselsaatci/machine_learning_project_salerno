@@ -1,37 +1,8 @@
-import numpy as np
-from client import Client, JOINTS, DEFAULT_PORT
-import sys
-import math
-
-TABLE_HEIGHT = 1.0
-TABLE_THICKNESS = 0.08
-TABLE_LENGTH = 2.4
-TABLE_WIDTH = 1.4
-
-
-def run(cli):
-    actor = AutoPlayerInterface()
-    while True:
-        state = cli.get_state()
-        j = actor.update(state)
-
-        cli.send_joints(j)
-
-
-def get_neutral_joint_position():
-    jp = [0.0]*JOINTS
-    jp[0] = -0.3
-    jp[2] = math.pi
-    a = math.pi/3.8
-    jp[5] = a
-    jp[7] = a
-    jp[9] = math.pi/3.5
-    jp[10] = math.pi/2
-    return jp
 
 
 class AutoPlayerInterface():
-    def __init__(self):
+    def __init__(self, nn_wrapper):
+        self.nn_wrapper = nn_wrapper
         jp = get_neutral_joint_position()
         self.stance = [
             self.make_stance(0.3, 0, 0.3, 0.3, -0.6-0.2),
@@ -57,11 +28,13 @@ class AutoPlayerInterface():
             jp = self.stance[self.chosen_stance].copy()
             jp[1] = bx
             return jp
+
         self.choose_stance(state)
         jp = self.stance[self.chosen_stance].copy()
         # dy=self.stance_dy[self.chosen_stance]
         self.choose_position(state, jp)
-        return jp
+        action = self.nn_wrapper.update(state)
+        return action
 
     def choose_stance(self, state):
         px, py, pz = state[11:14]
@@ -117,40 +90,13 @@ class AutoPlayerInterface():
         jp[10] -= (bx*0.3+vx*0.01)
 
 
-def main():
-    name = 'Example Client'
-    if len(sys.argv) > 1:
-        name = sys.argv[1]
-
-    port = DEFAULT_PORT
-    if len(sys.argv) > 2:
-        port = sys.argv[2]
-
-    host = 'localhost'
-    if len(sys.argv) > 3:
-        host = sys.argv[3]
-
-    cli = Client(name, host, port)
-    run(cli)
-
-
-if __name__ == '__main__':
-    '''
-    python client_ai.py name port host
-    Default parameters:
-     name: 'Example Client'
-     port: client.DEFAULT_PORT
-     host: 'localhost'
-
-    To run the one simulation on the server, run this in 3 separate command shells:
-    > python client_ai.py player_A
-    > python client_ai.py player_B
-    > python server.py
-
-    To run a second simulation, select a different PORT on the server:
-    > python client_ai.py player_A 9544
-    > python client_ai.py player_B 9544
-    > python server.py -port 9544    
-    '''
-
-    main()
+def get_neutral_joint_position():
+    jp = [0.0]*JOINTS
+    jp[0] = -0.3
+    jp[2] = math.pi
+    a = math.pi/3.8
+    jp[5] = a
+    jp[7] = a
+    jp[9] = math.pi/3.5
+    jp[10] = math.pi/2
+    return jp
