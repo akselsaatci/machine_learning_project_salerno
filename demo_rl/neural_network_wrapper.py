@@ -1,26 +1,23 @@
-import gym
 import numpy as np
 import torch
 from ddpg import DDPG
+from gym import spaces
 from replay_buffer import ReplayBuffer
-
-state_size = 5
-action_size = 5
 
 
 class NNWrapper:
     def __init__(self):
-        self.ddpg = DDPG(
-            gamma=0.99,
-            tau=0.001,
-            hidden_size=[400, 300],  # Adjust based on your specific network architecture
-            num_inputs=state_size,  # Define state_size according to your state representation
-            action_space=gym.spaces.Box(low=-1, high=1, shape=(action_size,), dtype=np.float32)
-        )
+        self.ddpg = DDPG(gamma=0.99, tau=0.001, hidden_size=[400, 300], num_inputs=37,
+                         action_space= spaces.Box(
+            low=np.array([-0.3, -0.8, -np.inf, -np.pi/2, -np.inf, -3*np.pi /
+                         4, -np.inf, -3*np.pi/4, -np.inf, -3*np.pi/4, -np.inf, -np.inf]),
+            high=np.array([0.3, 0.8, np.inf, np.pi/2, np.inf, 3*np.pi/4,
+                           np.inf, 3*np.pi/4, np.inf, 3*np.pi/4, np.inf, np.inf]),
+            dtype=np.float32))
         self.replay_buffer = ReplayBuffer(capacity=1000000)  # Example capacity, adjust as needed
 
     def update(self, state):
-        state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+        state_tensor = torch.FloatTensor(state).unsqueeze(0)
         action = self.ddpg.calc_action(state_tensor)
         action_np = action.squeeze(0).cpu().numpy()
         return action_np

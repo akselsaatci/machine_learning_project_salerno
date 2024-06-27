@@ -3,6 +3,7 @@ import logging
 import os
 
 import gym
+from gym import spaces
 import numpy as np
 import torch
 
@@ -76,7 +77,13 @@ if __name__ == "__main__":
                  tau,
                  hidden_size,
                  env.observation_space.shape[0],
-                 env.action_space,
+                 # Action and observation spaces
+                 spaces.Box(
+                    low=np.array([-0.3, -0.8, -np.inf, -np.pi / 2, -np.inf, -3 * np.pi /
+                                  4, -np.inf, -3 * np.pi / 4, -np.inf, -3 * np.pi / 4, -np.inf, -np.inf]),
+                    high=np.array([0.3, 0.8, np.inf, np.pi / 2, np.inf, 3 * np.pi / 4,
+                                   np.inf, 3 * np.pi / 4, np.inf, 3 * np.pi / 4, np.inf, np.inf]),
+                    dtype=np.float32),
                  checkpoint_dir=checkpoint_dir
                  )
 

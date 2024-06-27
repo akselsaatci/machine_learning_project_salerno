@@ -40,12 +40,12 @@ class ReplayBuffer:
 
 
 # Example usage
-state_dim = (3,)  # Replace with actual state dimension
-action_dim = (1,)  # Replace with actual action dimension
+state_dim = (38,)  # Replace with actual state dimension
+action_dim = (11,)  # Replace with actual action dimension
 buffer = ReplayBuffer(capacity=10000)
 
 # Add samples
-buffer.add([0, 1, 2], [0], 1.0, False, [0, 1, 3])
+#buffer.add([0, 1, 2], [0], 1.0, False, [0, 1, 3])
 
 # Sample a batch
 batch = buffer.sample(32)
