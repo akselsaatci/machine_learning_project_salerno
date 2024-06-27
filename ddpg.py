@@ -173,21 +173,10 @@ class DDPG(object):
             'critic_target': self.critic_target.state_dict(),
             'actor_optimizer': self.actor_optimizer.state_dict(),
             'critic_optimizer': self.critic_optimizer.state_dict(),
-            'replay_buffer': replay_buffer,
+            'replay_buffer_length': len(replay_buffer),  # Save length of replay_buffer
         }
-        logger.info('Saving model at timestep {}...'.format(last_timestep))
         torch.save(checkpoint, checkpoint_name)
-        gc.collect()
         logger.info('Saved model at timestep {} to {}'.format(last_timestep, self.checkpoint_dir))
-
-    def get_path_of_latest_file(self):
-        """
-        Returns the latest created file in 'checkpoint_dir'
-        """
-        files = [file for file in os.listdir(self.checkpoint_dir) if (file.endswith(".pt") or file.endswith(".tar"))]
-        filepaths = [os.path.join(self.checkpoint_dir, file) for file in files]
-        last_file = max(filepaths, key=os.path.getctime)
-        return os.path.abspath(last_file)
 
     def load_checkpoint(self, checkpoint_path=None):
         """
@@ -214,9 +203,12 @@ class DDPG(object):
             self.critic_target.load_state_dict(checkpoint['critic_target'])
             self.actor_optimizer.load_state_dict(checkpoint['actor_optimizer'])
             self.critic_optimizer.load_state_dict(checkpoint['critic_optimizer'])
-            replay_buffer = checkpoint['replay_buffer']
 
-            gc.collect()
+            # Reconstruct replay_buffer
+            replay_buffer_length = checkpoint['replay_buffer_length']
+            replay_buffer = deque(maxlen=replay_buffer_length)  # Initialize empty deque with maxlen
+            # Add logic to populate replay_buffer if needed
+
             logger.info('Loaded model at timestep {} from {}'.format(start_timestep, checkpoint_path))
             return start_timestep, replay_buffer
         else:

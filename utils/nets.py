@@ -74,7 +74,7 @@ class Critic(nn.Module):
         self.ln1 = nn.LayerNorm(hidden_size[0])
 
         # Layer 2
-        # In the second layer the actions will be inserted also 
+        # In the second layer the actions will be inserted also
         self.linear2 = nn.Linear(hidden_size[0] + num_outputs, hidden_size[1])
         self.ln2 = nn.LayerNorm(hidden_size[1])
 

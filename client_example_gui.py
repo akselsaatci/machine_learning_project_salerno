@@ -81,9 +81,9 @@ def run(cli):
         #diffferent prints:
 
         #pos of robot base:
-        #print(f"Base (x,y):{state[0]},{state[1]}")
+        #print(f"Base (x,y):{state[11]},{state[12]}")
 
-        print(f"Joint 10: {state[10]}")
+        #print(f"Joint 10: {state[10]}")
 
 
         # Agent
