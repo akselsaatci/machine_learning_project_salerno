@@ -16,6 +16,7 @@ logger.addHandler(logging.StreamHandler())
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+
 def soft_update(target, source, tau):
     for target_param, param in zip(target.parameters(), source.parameters()):
         target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)
@@ -82,13 +83,13 @@ class DDPG(object):
         Evaluates the action to perform in a given state
 
         Arguments:
-            state:          State to perform the action on in the env. 
+            state:          State to perform the action on in the env.
                             Used to evaluate the action.
             action_noise:   If not None, the noise to apply on the evaluated action
         """
         x = state.to(device)
 
-        # Get the continous action value to perform in the env
+        # Get the continuous action value to perform in the env
         self.actor.eval()  # Sets the actor in evaluation mode
         mu = self.actor(x)
         self.actor.train()  # Sets the actor in training mode
