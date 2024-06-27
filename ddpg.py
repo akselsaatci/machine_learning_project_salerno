@@ -116,24 +116,22 @@ class DDPG(object):
         Arguments:
             batch:  Batch to perform the training of the parameters
         """
-        # Get tensors from the batch
-        state_batch = torch.cat(batch.state).to(device)
-        action_batch = torch.cat(batch.action).to(device)
-        reward_batch = torch.cat(batch.reward).to(device)
-        done_batch = torch.cat(batch.done).to(device)
-        next_state_batch = torch.cat(batch.next_state).to(device)
+        # Unpack the batch into separate components
+        state_batch, action_batch, reward_batch, next_state_batch, done_batch = zip(*batch)
+
+        # Convert to tensors and move to the appropriate device
+        state_batch = torch.cat(state_batch).to(device)
+        action_batch = torch.cat(action_batch).to(device)
+        reward_batch = torch.stack(reward_batch).to(device).unsqueeze(1)
+        next_state_batch = torch.cat(next_state_batch).to(device)
+        done_batch = torch.tensor(done_batch, dtype=torch.float32).to(device).unsqueeze(1)
 
         # Get the actions and the state values to compute the targets
         next_action_batch = self.actor_target(next_state_batch)
         next_state_action_values = self.critic_target(next_state_batch, next_action_batch.detach())
 
         # Compute the target
-        reward_batch = reward_batch.unsqueeze(1)
-        done_batch = done_batch.unsqueeze(1)
         expected_values = reward_batch + (1.0 - done_batch) * self.gamma * next_state_action_values
-
-        # TODO: Clipping the expected values here?
-        # expected_value = torch.clamp(expected_value, min_value, max_value)
 
         # Update the critic network
         self.critic_optimizer.zero_grad()
