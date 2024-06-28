@@ -2,6 +2,8 @@ import gc
 import logging
 import os
 import torch
+import glob
+from collections import deque
 
 import torch.nn.functional as F
 from torch.optim import Adam
@@ -190,28 +192,31 @@ class DDPG(object):
         if checkpoint_path is None:
             checkpoint_path = self.get_path_of_latest_file()
 
-        if os.path.isfile(checkpoint_path):
-            logger.info("Loading checkpoint...({})".format(checkpoint_path))
-            key = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-            checkpoint = torch.load(checkpoint_path, map_location=key)
-            start_timestep = checkpoint['last_timestep'] + 1
-            self.actor.load_state_dict(checkpoint['actor'])
-            self.critic.load_state_dict(checkpoint['critic'])
-            self.actor_target.load_state_dict(checkpoint['actor_target'])
-            self.critic_target.load_state_dict(checkpoint['critic_target'])
-            self.actor_optimizer.load_state_dict(checkpoint['actor_optimizer'])
-            self.critic_optimizer.load_state_dict(checkpoint['critic_optimizer'])
 
-            # Reconstruct replay_buffer
-            replay_buffer_length = checkpoint['replay_buffer_length']
-            replay_buffer = deque(maxlen=replay_buffer_length)  # Initialize empty deque with maxlen
-            # Add logic to populate replay_buffer if needed
+        if checkpoint_path is not None:
+            if os.path.isfile(checkpoint_path):
+                logger.info("Loading checkpoint...({})".format(checkpoint_path))
+                key = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-            logger.info('Loaded model at timestep {} from {}'.format(start_timestep, checkpoint_path))
-            return start_timestep, replay_buffer
-        else:
-            raise OSError('Checkpoint not found')
+                checkpoint = torch.load(checkpoint_path, map_location=key)
+                start_timestep = checkpoint['last_timestep'] + 1
+                self.actor.load_state_dict(checkpoint['actor'])
+                self.critic.load_state_dict(checkpoint['critic'])
+                self.actor_target.load_state_dict(checkpoint['actor_target'])
+                self.critic_target.load_state_dict(checkpoint['critic_target'])
+                self.actor_optimizer.load_state_dict(checkpoint['actor_optimizer'])
+                self.critic_optimizer.load_state_dict(checkpoint['critic_optimizer'])
+
+                # Reconstruct replay_buffer
+                replay_buffer_length = checkpoint['replay_buffer_length']
+                replay_buffer = deque(maxlen=replay_buffer_length)  # Initialize empty deque with maxlen
+                # Add logic to populate replay_buffer if needed
+
+                logger.info('Loaded model at timestep {} from {}'.format(start_timestep, checkpoint_path))
+                return start_timestep, replay_buffer
+            else:
+                raise OSError('Checkpoint not found')
 
     def set_eval(self):
         """
@@ -232,6 +237,40 @@ class DDPG(object):
         self.critic.train()
         self.actor_target.train()
         self.critic_target.train()
+
+    def get_path_of_latest_file(self):
+        """
+        Get the path of the latest file added to the 'saved_models' directory
+        located in the same directory as the script.
+
+        Returns:
+        str: The path to the latest file added, or None if the directory is empty or does not exist.
+        """
+        try:
+            # Get the directory of the current script
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+
+            # Path to the 'saved_models' directory
+            saved_models_dir = os.path.join(script_dir, 'saved_models')
+
+            # Check if the 'saved_models' directory exists
+            if not os.path.isdir(saved_models_dir):
+                return None
+
+            # Use glob to list all files in the 'saved_models' directory
+            files = glob.glob(os.path.join(saved_models_dir, '*'))
+
+            # Check if the directory is empty
+            if not files:
+                return None
+
+            # Get the latest file based on modification time
+            latest_file = max(files, key=os.path.getmtime)
+
+            return latest_file
+        except Exception:
+            return None
+
 
     def get_network(self, name):
         if name == 'Actor':
