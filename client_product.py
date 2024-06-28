@@ -57,19 +57,43 @@ def get_neutral_joint_position():
     jp[10] = math.pi/2
     return jp
 
+
+class OrnsteinUhlenbeckNoise:
+    def __init__(self, size, mu=0.0, theta=0.15, sigma=0.4):
+        self.size = size
+        self.mu = mu #mean of noise. Initially 0.0
+        self.theta = theta #decline of exploration. Initially 0.15
+        self.sigma = sigma #exploraion. Initialy 0.2
+        self.state = np.ones(self.size) * self.mu
+
+    def reset(self):
+        self.state = np.ones(self.size) * self.mu
+
+    def noise(self):
+        x = self.state
+        dx = self.theta * (self.mu - x) + self.sigma * np.random.randn(self.size)
+        self.state = x + dx
+        return self.state
+
+
+
+
+
 def run(cli):
     gamma = 0.7
-    tau = 0.01
+    tau = 0.1
     hidden_size = [256, 256]
     num_inputs = 38
+    #Initialize Actor
     actor = DDPG(gamma=gamma, tau=tau, hidden_size=hidden_size, num_inputs=num_inputs, action_space=ACTION_SPACE)
+    actor.load_checkpoint()
 
     # Initialize Replay Buffer
     buffer_size = 10000  # Maximum size of the replay buffer
     replay_buffer = deque(maxlen=buffer_size)
 
-    max_episodes = 100  # Number of episodes to train
-    max_steps = 1000  # Maximum number of steps per episode
+    max_episodes = 1000  # Number of episodes to train
+    max_steps = 400  # Maximum number of steps per episode
 
     episode_rewards = []  # To store rewards for each episode
 
@@ -78,9 +102,14 @@ def run(cli):
         state = cli.get_state()
         state = torch.FloatTensor(state).unsqueeze(0)  # Convert to PyTorch tensor
 
+        # Assume action_space is an instance of ActionSpace with appropriate low and high bounds
+        action_dim = ACTION_SPACE.low.shape[0]
+        noise = OrnsteinUhlenbeckNoise(size=action_dim)
         for step in range(max_steps):
+
+
             # Calculate action
-            action = actor.calc_action(state, np.random.normal(0,1,100))
+            action = actor.calc_action(state,noise)
 
             # Perform action in environment
             cli.send_joints(action.cpu().numpy()[0])
@@ -93,8 +122,12 @@ def run(cli):
             done = is_done()  # Example function to check if episode is done
 
             # Store transition in replay buffer
-            transition = (state, action, reward, next_state, done)
+            transition = (state, action,reward, next_state,done)
             replay_buffer.append(transition)
+
+            #end episode, if point scored
+            if state[0][35] < next_state[0][35] or state[0][34] < next_state[0][34]:
+                break
 
             # Update state
             state = next_state
@@ -102,10 +135,14 @@ def run(cli):
 
             # Perform DDPG updates if replay buffer is sufficiently large
             if len(replay_buffer) > 100:
+                #print(f"Training...")
                 batch_size = 32
                 batch = random.sample(replay_buffer, batch_size)
                 # Perform DDPG updates
                 value_loss, policy_loss = actor.update_params(batch)
+
+        #here im thinking about clearing the buffer, so only new values are in there
+        #replay_buffer.clear()
 
         # Print episode results
         print(f"Episode {episode + 1}: Reward = {episode_reward}")
@@ -123,12 +160,12 @@ def run(cli):
 
 
 def get_reward(states):
-    ball_x = states[17]
-    ball_y = states[19]
-    paddle_x = states[11]
-    paddle_y = states[13]
-
-    return -((paddle_x - ball_x) ** 2 + (paddle_y - ball_y) ** 2)
+    reward_x= (states[11] - states[17]) ** 2
+    reward_z= (states[13] - states[19]) ** 2
+    reward_versor=(states[14]-0.02) **2 + (states[15]-0.90) ** 2 + (states[16]-0.43) ** 2
+    reward_stance= (states[2]-math.pi)**2 + (states[5]-math.pi/3.8) ** 2 + (states[7]-math.pi/3.8) ** 2 + (states[9]-math.pi/3.5) ** 2
+    #print(f"X: {0.1*reward_x}, Z: {0.1*reward_z}, Versor: {0.5*reward_versor}, Stance: {0.5*reward_stance}")
+    return -(0.1*reward_x + 0.1* reward_z + 0.5*reward_versor+ 0.5*reward_stance)
 
 
 def is_done():

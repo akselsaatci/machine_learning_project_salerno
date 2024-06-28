@@ -37,7 +37,7 @@ joints = [
      "description": "Roll of the third arm link."},
     {"type": "Rotation", "range": (-3*math.pi/4, 3*math.pi/4),
      "description": "Pitch of the paddle."},
-    {"type": "Rotation", "range": (-360, 360),
+    {"type": "Rotation", "range": (-3.60, 3.60),
      "description": "Roll of the paddle."},
 ]
 
@@ -96,7 +96,7 @@ def run(cli):
                 j[1] = bx
         #trying to get the paddle to be in the right position
         #if state[10]%(math.pi/2)==0: j[10]=0
-
+        print(f"Versor: ({state[14]},{state[15]},{state[16]})")
         # Send updated joint values to the server
         cli.send_joints(j)
 
