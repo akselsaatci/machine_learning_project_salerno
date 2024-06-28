@@ -20,37 +20,18 @@ class ActionSpace:
         self.shape = self.low.shape
 
 ACTION_SPACE = ActionSpace(
-    [
-        -0.3,
-        -0.8,
-        -10,
-        -math.pi / 2,
-        -10,
-        -math.pi * 3 / 4,
-        -10,
-        -math.pi * 3 / 4,
-        -10,
-        -math.pi * 3 / 4,
-        -10],
-    [
-        0.3,
-        0.8,
-        10,
-        math.pi / 2,
-        10,
-        math.pi * 3 / 4,
-        10,
-        math.pi * 3 / 4,
-        10,
-        math.pi * 3 / 4,
-        10])
+    #Used Joints: Everything but joint[1]
+    #Actionspace: 0,2,3,...,11
+    [-0.1, -0.1, -0.5, -0.1, -0.5, -0.1, -0.5, -0.1, -0.5, -0.1],
+    [0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1])
 
 
 def get_neutral_joint_position():
     jp = [0.0]*JOINTS
-    jp[0] = -0.3
+    jp[0] = -0.2
     jp[2] = math.pi
     a = math.pi/3.8
+    jp[3] = 0.1
     jp[5] = a
     jp[7] = a
     jp[9] = math.pi/3.5
@@ -59,7 +40,7 @@ def get_neutral_joint_position():
 
 
 class OrnsteinUhlenbeckNoise:
-    def __init__(self, size, mu=0.0, theta=0.15, sigma=0.4):
+    def __init__(self, size, mu=0.0, theta=0.015, sigma=0.02):
         self.size = size
         self.mu = mu #mean of noise. Initially 0.0
         self.theta = theta #decline of exploration. Initially 0.15
@@ -94,7 +75,6 @@ def run(cli):
 
     max_episodes = 1000  # Number of episodes to train
     max_steps = 400  # Maximum number of steps per episode
-
     episode_rewards = []  # To store rewards for each episode
 
     for episode in range(max_episodes):
@@ -110,9 +90,10 @@ def run(cli):
 
             # Calculate action
             action = actor.calc_action(state,noise)
-
+            act_action = action.cpu().numpy()[0]
+            act_action = calc_action(act_action, state[0][17])
             # Perform action in environment
-            cli.send_joints(action.cpu().numpy()[0])
+            cli.send_joints(act_action)
 
             # Receive next state and reward from environment
             next_state = cli.get_state()
@@ -160,13 +141,20 @@ def run(cli):
 
 
 def get_reward(states):
-    reward_x= (states[11] - states[17]) ** 2
     reward_z= (states[13] - states[19]) ** 2
     reward_versor=(states[14]-0.02) **2 + (states[15]-0.90) ** 2 + (states[16]-0.43) ** 2
-    reward_stance= (states[2]-math.pi)**2 + (states[5]-math.pi/3.8) ** 2 + (states[7]-math.pi/3.8) ** 2 + (states[9]-math.pi/3.5) ** 2
-    #print(f"X: {0.1*reward_x}, Z: {0.1*reward_z}, Versor: {0.5*reward_versor}, Stance: {0.5*reward_stance}")
-    return -(0.1*reward_x + 0.1* reward_z + 0.5*reward_versor+ 0.5*reward_stance)
+    #print(f"Z: {reward_z}, Versor: {0.5*reward_versor}")
 
+    return -(10 * reward_z + 0.5 * reward_versor)
+
+def calc_action(action, y): #uses the standard position and adds changes
+    a= get_neutral_joint_position()
+    a[0]= a[0] + action[0]
+    a[1]= y
+    for i in range(len(action)-1):
+        a[i+2]= a[i+2] + action[i+1]
+
+    return a
 
 def is_done():
     return False
