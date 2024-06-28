@@ -100,7 +100,7 @@ class DDPG(object):
         # During training we add noise for exploration
         if action_noise is not None:
             noise = torch.Tensor(action_noise.noise()).to(device)
-            mu += noise
+            mu += noise *mu
 
         # Clip the output according to the action space of the env
         mu = mu.clamp(self.action_space.low[0], self.action_space.high[0])

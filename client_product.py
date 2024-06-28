@@ -22,8 +22,8 @@ class ActionSpace:
 ACTION_SPACE = ActionSpace(
     #Used Joints: Everything but joint[1]
     #Actionspace: 0,2,3,...,11
-    [-0.1, -0.1, -0.5, -0.1, -0.5, -0.1, -0.5, -0.1, -0.5, -0.1],
-    [0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1, 0.5, 0.1])
+    [-0.1, -0.05, -0.7, -0.05, -0.7, -0.05, -0.7, -0.05, -1.4, -0.1],
+    [0.5, 0.05, 1.5, 0.05, 0.7, 0.05, 0.7, 0.05, 0.7, 0.1])
 
 
 def get_neutral_joint_position():
@@ -40,7 +40,7 @@ def get_neutral_joint_position():
 
 
 class OrnsteinUhlenbeckNoise:
-    def __init__(self, size, mu=0.0, theta=0.015, sigma=0.02):
+    def __init__(self, size, mu=0.0, theta=0.15, sigma=0.1):
         self.size = size
         self.mu = mu #mean of noise. Initially 0.0
         self.theta = theta #decline of exploration. Initially 0.15
@@ -81,16 +81,28 @@ def run(cli):
         episode_reward = 0
         state = cli.get_state()
         state = torch.FloatTensor(state).unsqueeze(0)  # Convert to PyTorch tensor
+        rob_touch_switch= False #switch for the robo touch (Workaround bc of engine loading)
 
         # Assume action_space is an instance of ActionSpace with appropriate low and high bounds
         action_dim = ACTION_SPACE.low.shape[0]
         noise = OrnsteinUhlenbeckNoise(size=action_dim)
         for step in range(max_steps):
-
+            reward=0
 
             # Calculate action
             action = actor.calc_action(state,noise)
             act_action = action.cpu().numpy()[0]
+            '''#Visualization of ACTION_SPACE
+            if episode%6 <3:
+                act_action[1] = ACTION_SPACE.low[1]
+                act_action[3] = ACTION_SPACE.low[3]
+                act_action[5] = ACTION_SPACE.low[5]
+                act_action[7] = ACTION_SPACE.low[7]
+            else:
+                act_action[1] = ACTION_SPACE.high[1]
+                act_action[3] = ACTION_SPACE.high[3]
+                act_action[5] = ACTION_SPACE.high[5]
+                act_action[7] = ACTION_SPACE.high[7]'''
             act_action = calc_action(act_action, state[0][17])
             # Perform action in environment
             cli.send_joints(act_action)
@@ -99,7 +111,12 @@ def run(cli):
             next_state = cli.get_state()
             next_state = torch.FloatTensor(next_state).unsqueeze(0)
 
-            reward = get_reward(state[0])  # Example function to get reward from environment
+            #via a switch variable we give a reward, if the robot touches the ball
+            if not rob_touch_switch and not state[0][31]:
+                rob_touch_switch = True
+            if state[0][31] and rob_touch_switch:
+                reward =5
+            reward = reward + get_reward(state[0])  #  function to get reward from environment
             done = is_done()  # Example function to check if episode is done
 
             # Store transition in replay buffer
@@ -122,6 +139,7 @@ def run(cli):
                 # Perform DDPG updates
                 value_loss, policy_loss = actor.update_params(batch)
 
+
         #here im thinking about clearing the buffer, so only new values are in there
         #replay_buffer.clear()
 
@@ -130,7 +148,7 @@ def run(cli):
         episode_rewards.append(episode_reward)
 
         # Optionally, save checkpoint
-        if (episode + 1) % 10 == 0:
+        if (episode + 1) % 50 == 0:
             actor.save_checkpoint(episode + 1, replay_buffer)
 
     # Optionally, plot episode rewards or perform other analyses
@@ -141,19 +159,18 @@ def run(cli):
 
 
 def get_reward(states):
-    reward_z= (states[13] - states[19]) ** 2
     reward_versor=(states[14]-0.02) **2 + (states[15]-0.90) ** 2 + (states[16]-0.43) ** 2
     #print(f"Z: {reward_z}, Versor: {0.5*reward_versor}")
 
-    return -(10 * reward_z + 0.5 * reward_versor)
+    return -(2 + 0.5 * reward_versor)
 
 def calc_action(action, y): #uses the standard position and adds changes
     a= get_neutral_joint_position()
-    a[0]= a[0] + action[0]
+    #print(f"Actions: {action}")
     a[1]= y
+    a[0]= a[0] + action[0]
     for i in range(len(action)-1):
         a[i+2]= a[i+2] + action[i+1]
-
     return a
 
 def is_done():
