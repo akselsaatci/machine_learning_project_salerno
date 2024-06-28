@@ -73,7 +73,7 @@ def run(cli):
     buffer_size = 10000  # Maximum size of the replay buffer
     replay_buffer = deque(maxlen=buffer_size)
 
-    max_episodes = 1000  # Number of episodes to train
+    max_episodes = 5000  # Number of episodes to train
     max_steps = 400  # Maximum number of steps per episode
     episode_rewards = []  # To store rewards for each episode
 
@@ -148,7 +148,7 @@ def run(cli):
         episode_rewards.append(episode_reward)
 
         # Optionally, save checkpoint
-        if (episode + 1) % 50 == 0:
+        if (episode + 1) % 20 == 0:
             actor.save_checkpoint(episode + 1, replay_buffer)
 
     # Optionally, plot episode rewards or perform other analyses
