@@ -132,8 +132,10 @@ def run(cli):
         episode_rewards.append(episode_reward)
 
         # Optionally, save checkpoint
-        if (episode + 1) % 20 == 0:
+        if (episode + 1) % 500 == 0:
             actor.save_checkpoint(episode + 1, replay_buffer)
+            #resetting the noise
+            noise = OrnsteinUhlenbeckNoise(size=action_dim)
 
     # Optionally, plot episode rewards or perform other analyses
     # ...
@@ -153,18 +155,20 @@ def get_reward(states,old_states):
         bonus -= 10
     # if ball enters enemy area above plate, but not at game-start
     if old_states[32] < states[32] and states[19] > 0 and states[22] != 0:
-        bonus -= 50
+        bonus -= 60
     if old_states[33] < states[33] and states[22] != 0:  # if ball hits enemy plate, but not at game-start
-        bonus -= 200
+        bonus -= 80
         print("Crazy! a Hit!")
     if old_states[34] < states[34]:
-        bonus -= 100
+        bonus -= 120
         print("Crazy! a Point!")
-
+    # MORE IDEAS FOR BONUS:
+    # Bonus for good speed after hit
+    # Bonus adds up if its the second ball hit
     #print(f"Pos: {2*posnY}, Versor: {2*versor}")
     #return reward, if game is still playing
     if states[28]:
-        return -( 2 * versor + 2 * posnY + bonus)
+        return -( 2 * versor + 2.5 * posnY + bonus)
     else:
         return torch.tensor(0.0)
 
