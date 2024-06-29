@@ -84,7 +84,6 @@ def run(cli):
         episode_reward = 0
         state = cli.get_state()
         state = torch.FloatTensor(state).unsqueeze(0)  # Convert to PyTorch tensor
-        rob_touch_switch= False #switch for the robo touch (Workaround bc of engine loading)
 
         for step in range(max_steps):
             reward=0
@@ -101,12 +100,7 @@ def run(cli):
             next_state = cli.get_state()
             next_state = torch.FloatTensor(next_state).unsqueeze(0)
 
-            #via a switch variable we give a reward, if the robot touches the ball
-            if not rob_touch_switch and not state[0][31]:
-                rob_touch_switch = True
-            if state[0][31] and rob_touch_switch:
-                reward = 18
-            reward = reward + get_reward(state[0])  #  function to get reward from environment
+            reward = get_reward(next_state[0],state[0])  #  function to get reward from environment
 
             # Store transition in replay buffer
             transition = (state, action,reward, next_state)
@@ -147,11 +141,16 @@ def run(cli):
     actor.save_checkpoint(max_episodes, replay_buffer)
 
 
-def get_reward(states):
-    reward_versor=(states[14]-0.02) **2 + (states[15]-0.90) ** 2 + (states[16]-0.43) ** 2
-    #print(f"Z: {reward_z}, Versor: {0.5*reward_versor}")
+def get_reward(states,old_states):
+    versor=(states[14]-0.02) **2 + (states[15]-0.90) ** 2 + (states[16]-0.43) ** 2
+    pos = (states[11] - states[17]) ** 2 + (states[12] - states[18]) ** 2 + (states[13] - states[19]) ** 2
+    hit = 0
+    point = 0
+    if pos < 0.1: hit =-500
+    if old_states[34] < states[34]: point = - 10000
+    #print(f"Pos: {0.3*reward_pos}, Versor: {2*reward_versor}")
 
-    return -(3 + 1 * reward_versor)
+    return -(3 + 2 * versor + 0.3 * pos + hit + point)
 
 def calc_action(action, y): #uses the standard position and adds changes
     a= get_neutral_joint_position()
