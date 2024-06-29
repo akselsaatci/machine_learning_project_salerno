@@ -92,18 +92,8 @@ def run(cli):
             # Calculate action
             action = actor.calc_action(state,noise)
             act_action = action.cpu().numpy()[0]
-            '''#Visualization of ACTION_SPACE
-            if episode%6 <3:
-                act_action[1] = ACTION_SPACE.low[1]
-                act_action[3] = ACTION_SPACE.low[3]
-                act_action[5] = ACTION_SPACE.low[5]
-                act_action[7] = ACTION_SPACE.low[7]
-            else:
-                act_action[1] = ACTION_SPACE.high[1]
-                act_action[3] = ACTION_SPACE.high[3]
-                act_action[5] = ACTION_SPACE.high[5]
-                act_action[7] = ACTION_SPACE.high[7]'''
             act_action = calc_action(act_action, state[0][17])
+
             # Perform action in environment
             cli.send_joints(act_action)
 
@@ -117,10 +107,9 @@ def run(cli):
             if state[0][31] and rob_touch_switch:
                 reward = 18
             reward = reward + get_reward(state[0])  #  function to get reward from environment
-            done = is_done()  # Example function to check if episode is done
 
             # Store transition in replay buffer
-            transition = (state, action,reward, next_state,done)
+            transition = (state, action,reward, next_state)
             replay_buffer.append(transition)
 
             #end episode, if point scored
@@ -186,8 +175,6 @@ def calc_action(action, y): #uses the standard position and adds changes
         a[i+2]= a[i+2] + action[i+1]
     return a
 
-def is_done():
-    return False
 
 
 
