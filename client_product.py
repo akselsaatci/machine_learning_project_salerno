@@ -59,15 +59,15 @@ class OrnsteinUhlenbeckNoise:
 
 
 
-
+gamma = 0.7
+tau = 0.1
+hidden_size = [256, 256]
+num_inputs = 38
+#Initialize Actor
+actor = DDPG(gamma=gamma, tau=tau, hidden_size=hidden_size, num_inputs=num_inputs, action_space=ACTION_SPACE)
+actor.load_checkpoint()
 def run(cli):
-    gamma = 0.7
-    tau = 0.1
-    hidden_size = [256, 256]
-    num_inputs = 38
-    #Initialize Actor
-    actor = DDPG(gamma=gamma, tau=tau, hidden_size=hidden_size, num_inputs=num_inputs, action_space=ACTION_SPACE)
-    actor.load_checkpoint()
+
 
     # Initialize Replay Buffer
     buffer_size = 10000  # Maximum size of the replay buffer
