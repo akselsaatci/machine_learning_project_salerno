@@ -1,4 +1,5 @@
 from collections import deque
+import matplotlib.pyplot as plt
 import random
 import numpy as np
 import sys
@@ -143,14 +144,31 @@ def run(cli):
 
 def get_reward(states,old_states):
     versor=(states[14]-0.02) **2 + (states[15]-0.90) ** 2 + (states[16]-0.43) ** 2
+    #calculate pos, but without the Y
+    posnY = (states[11] - states[17]) ** 2 + 0 * (states[12] - states[18]) ** 2 + (states[13] - states[19]) ** 2
     pos = (states[11] - states[17]) ** 2 + (states[12] - states[18]) ** 2 + (states[13] - states[19]) ** 2
-    hit = 0
-    point = 0
-    if pos < 0.1: hit =-500
-    if old_states[34] < states[34]: point = - 10000
-    #print(f"Pos: {0.3*reward_pos}, Versor: {2*reward_versor}")
+    bonus = 0
+    if states[13] < 0: bonus += 5
+    if pos < 0.05 and states[31] < 1: #if ball is hitting paddle and didn't hit robot before
+        bonus -= 10
+    # if ball enters enemy area above plate, but not at game-start
+    if old_states[32] < states[32] and states[19] > 0 and states[22] != 0:
+        bonus -= 50
+    if old_states[33] < states[33] and states[22] != 0:  # if ball hits enemy plate, but not at game-start
+        bonus -= 200
+        print("Crazy! a Hit!")
+    if old_states[34] < states[34]:
+        bonus -= 100
+        print("Crazy! a Point!")
 
-    return -(3 + 2 * versor + 0.3 * pos + hit + point)
+    #print(f"Pos: {2*posnY}, Versor: {2*versor}")
+    #return reward, if game is still playing
+    if states[28]:
+        return -( 2 * versor + 2 * posnY + bonus)
+    else:
+        return torch.tensor(0.0)
+
+
 
 def calc_action(action, y): #uses the standard position and adds changes
     a= get_neutral_joint_position()
