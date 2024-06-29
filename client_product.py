@@ -21,7 +21,7 @@ class ActionSpace:
 
 ACTION_SPACE = ActionSpace(
     #Used Joints: Everything but joint[1]
-    #Actionspace: 0,2,3,...,11
+    #Actionspace: 0,2,3,...,10
     [-0.1, -0.001, -0.7, -0.005, -0.7, -0.01, -0.7, -0.05, -1.4, -0.1],
     [0.5, 0.001, 1.5, 0.005, 0.7, 0.01, 0.7, 0.05, 0.7, 0.1])
 
@@ -162,11 +162,24 @@ def get_reward(states):
     reward_versor=(states[14]-0.02) **2 + (states[15]-0.90) ** 2 + (states[16]-0.43) ** 2
     #print(f"Z: {reward_z}, Versor: {0.5*reward_versor}")
 
-    return -(8 + 1 * reward_versor)
+    return -(3 + 1 * reward_versor)
 
 def calc_action(action, y): #uses the standard position and adds changes
     a= get_neutral_joint_position()
-    #print(f"Actions: {action}")
+    # Nets give a value between -1 and 1
+    # Normalize values
+    action[0] = action[0] * 0.3 + 0.2
+    action[1] = action[1] * 0.001
+    action[2] = action[2] * 1.1 + 0.4
+    action[3] = action[3] * 0.005
+    action[4] = action[4] * 0.7
+    action[5] = action[5] * 0.01
+    action[6] = action[6] * 0.7
+    action[7] = action[7] * 0.05
+    action[8] = action[8] * 1.05 - 0.35
+    action[9] = action[9] * 0.1
+
+    #mapping values on the neutral joints
     a[1]= y
     a[0]= a[0] + action[0]
     for i in range(len(action)-1):
