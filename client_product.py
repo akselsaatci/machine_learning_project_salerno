@@ -101,7 +101,12 @@ def run(cli):
             next_state = torch.FloatTensor(next_state).unsqueeze(0)
 
             reward = get_reward(next_state[0],state[0])  #  function to get reward from environment
-
+            if state[0][34] < next_state[0][34]:
+                reward +=  -10000
+                print("We scored!")
+            elif state[0][35] < next_state[0][35]:
+                reward += 10000
+                print("enemy Scorred")
             # Store transition in replay buffer
             transition = (state, action,reward, next_state)
             replay_buffer.append(transition)
@@ -142,15 +147,19 @@ def run(cli):
 
 
 def get_reward(states,old_states):
-    versor=(states[14]-0.02) **2 + (states[15]-0.90) ** 2 + (states[16]-0.43) ** 2
+    versor=(states[14]-0.02) ** 2 + (states[16]-0.9) ** 2
     pos = (states[11] - states[17]) ** 2 + (states[12] - states[18]) ** 2 + (states[13] - states[19]) ** 2
     hit = 0
     point = 0
-    if pos < 0.1: hit =-500
-    if old_states[34] < states[34]: point = - 10000
-    #print(f"Pos: {0.3*reward_pos}, Versor: {2*reward_versor}")
+    is_it_under = 0
+    if pos < 0.08:
+        hit = -5000
+  
+    if states[13] < 1:
+        is_it_under = 200
+  #  print(f"Pos: {0.3*pos}, Versor: {2*versor}")
 
-    return -(3 + 2 * versor + 0.3 * pos + hit + point)
+    return -(0.4 * pos + hit + point  )
 
 def calc_action(action, y): #uses the standard position and adds changes
     a= get_neutral_joint_position()
