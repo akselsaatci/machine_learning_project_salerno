@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 import ast
 from sklearn.model_selection import train_test_split
+
 # Load and process the CSV file
 file_path = './data_new.csv'
 df = pd.read_csv(file_path)
@@ -38,6 +39,8 @@ y_tensor = torch.tensor(y_scaled, dtype=torch.float32)
 # Split into training and validation sets
 X_train, X_val, y_train, y_val = train_test_split(X_tensor, y_tensor, test_size=0.2, random_state=42)
 print(X_train)
+
+
 class BallToJointsNN(nn.Module):
     def __init__(self, input_size=3, output_size=11):  # 11 joints * 3 coordinates each
         super(BallToJointsNN, self).__init__()
@@ -53,37 +56,34 @@ class BallToJointsNN(nn.Module):
         x = self.fc4(x)
         return x
 
+
 model = BallToJointsNN()
 
-
-
 # Load the model from a pickle file
-with open("./ball_to_joints_model_old.pkl", 'rb') as f:
+with open("./model.pkl", 'rb') as f:
     loaded_model = pickle.load(f)
-
-
-
 
 
 def run(cli):
     while True:
         state = cli.get_state()
-    # Example new ball position
+        # Example new ball position
         new_ball_position = np.array([[state[17], state[18], state[19]]])
         new_ball_position_scaled = scaler_X.transform(new_ball_position)
         new_ball_position_tensor = torch.tensor(new_ball_position_scaled, dtype=torch.float32)
-        
+
         loaded_model.eval()
         with torch.no_grad():
             predicted_joint_positions_scaled = loaded_model(new_ball_position_tensor).numpy()
             predicted_joint_positions = scaler_y.inverse_transform(predicted_joint_positions_scaled)
-        
+
         # Reshape the output into a 2D array
         num_joints = 11
-        reshaped_output = predicted_joint_positions.reshape(num_joints) 
+        reshaped_output = predicted_joint_positions.reshape(num_joints)
         print(reshaped_output)
         print("running!!")
         cli.send_joints(reshaped_output)
+
 
 def main():
     name = 'Example Client'
@@ -100,6 +100,7 @@ def main():
 
     cli = Client(name, host, port)
     run(cli)
+
 
 if __name__ == '__main__':
     main()
